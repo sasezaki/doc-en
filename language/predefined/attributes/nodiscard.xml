@@ -14,12 +14,11 @@
    </simpara>
    <simpara>
     This is useful for functions where not checking the return value is likely
-    to be a bug, for example for functions that return a new instance and do not
-    mutate the instance they are called on.
+    to be a bug.
    </simpara>
    <simpara>
-    To intentionally discard the return value of such a function, the return
-    value can be cast to <type>void</type>.
+    To intentionally discard the return value of such a function, use (void)
+    cast to suppress the warning.
    </simpara>
   </section>
 
@@ -48,12 +47,33 @@
 <![CDATA[
 <?php
 
-#[\NoDiscard]
-function create_value(): int {
-    return 42;
-}
+/**
+ * Processes all the given items and returns an array with the results of the
+ * operation for each item. `null` indicates success and an Exception indicates
+ * an error. The keys of the result array match the keys of the $items array.
+ *
+ * @param array<string> $items
+ * @return array<null|Exception>
+ */
+#[\NoDiscard("as processing might fail for individual items")]
+function bulk_process(array $items): array {
+	$results = [];
 
-create_value();
+	foreach ($items as $key => $item) {
+		if (\random_int(0, 9999) < 9999) {
+			// Pretend to do something useful with $item,
+			// which will succeed in 99.99% of cases.
+			echo "Processing {$item}", PHP_EOL;
+			$error = null;
+		} else {
+			$error = new \Exception("Failed to process {$item}.");
+		}
+
+		$results[$key] = $error;
+	}
+
+	return $results;
+}
 
 ?>
 ]]>
@@ -61,35 +81,7 @@ create_value();
     &example.outputs;
     <screen>
 <![CDATA[
-Warning: Value returned from create_value() must be used
-]]>
-    </screen>
-   </example>
-   <example>
-    <title>Usage on methods</title>
-    <programlisting role="php">
-<![CDATA[
-<?php
-
-class Number {
-    public function __construct(private int $value) {}
-
-    #[\NoDiscard]
-    public function add(int $n): self {
-        return new self($this->value + $n);
-    }
-}
-
-$n = new Number(42);
-$n->add(1);
-
-?>
-]]>
-    </programlisting>
-    &example.outputs;
-    <screen>
-<![CDATA[
-Warning: Value returned from Number::add() must be used
+Warning: The return value of function bulk_process() should either be used or intentionally ignored by casting it as (void), as processing might fail for individual items
 ]]>
     </screen>
    </example>
